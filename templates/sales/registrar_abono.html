@@ -10,10 +10,27 @@
             <form method="post">
                 {% csrf_token %}
                 
-                <div class="mb-3">
-                    {{ form.cliente.label_tag }}
-                    {{ form.cliente }}
-                </div>
+               {% if cliente_seleccionado %}
+                    <div class="mb-3">
+                        <label class="form-label">Cliente</label>
+                        <input
+                            type="text"
+                            class="form-control"
+                            value="{{ cliente_seleccionado.nombre }}"
+                            readonly
+                        >
+                        <input
+                            type="hidden"
+                            name="cliente"
+                            value="{{ cliente_seleccionado.id }}"
+                        >
+                    </div>
+                    {% else %}
+                    <div class="mb-3">
+                        {{ form.cliente.label_tag }}
+                        {{ form.cliente }}
+                    </div>
+                {% endif %}
                 
                 <div class="mb-3">
                     {{ form.monto.label_tag }}

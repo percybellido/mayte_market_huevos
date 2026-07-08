@@ -1,5 +1,6 @@
 from django.db import models
 from datetime import timedelta
+from django.utils.timezone import now
 # django
 from django.utils import timezone
 
@@ -7,10 +8,28 @@ from django.db.models import Sum
 
 from django.db.models import Q, Sum, F, FloatField, ExpressionWrapper
 
-class VentaManagers(models.Manager):
+class VentaQuerySet(models.QuerySet):
 
+    def activas(self):
+        return self.filter(status='confirmed')
+
+    def anuladas(self):
+        return self.filter(status='cancelled')
+
+
+    
+class VentaManagers(models.Manager.from_queryset(VentaQuerySet)):
+            
     def listar_ventas(self):
-        return self.all()
+        fecha_inicio = now() - timedelta(days=30)
+        return (
+            self.filter(
+                status='confirmed',
+                Venta_Fecha__gte=fecha_inicio
+            )
+            .select_related('Venta_CliId', 'user')
+            .order_by('-Venta_Fecha')
+        )
 
     def total_ventas(self):
         return self.aggregate(

@@ -4,29 +4,55 @@
 {% load tz %}
 {% block content %}
 
+<h1 class="text-center py-3 color-fuente">Lista de Ventas</h1>
 
-   
- <h1 class="text-center py-3 color-fuente">Lista de Ventas</h1>
-    <table class="table table-secondary fuente table-hover mb-0">
-        <thead>
-            <tr>
+<table class="table table-secondary fuente table-hover mb-0">
+    <thead>
+        <tr>
             <th scope="col">Cliente</th>
-            <th scope="col">Venta</th>
+            <th scope="col">Total Venta</th>
             <th scope="col">Fecha</th>
-            
+            <th scope="col" class="text-center">Acciones</th>
+            <th scope="col" class="text-center">Estado</th>
+
+        </tr>
+    </thead>
+    <tbody>
+        {% for l in lista_ventas %}
+            <tr>
+                <th scope="row">{{ l.Venta_CliId }}</th>
+
+                <td>S/ {{ l.Venta_Total|floatformat:2 }}</td>
+
+                <td>{{ l.Venta_Fecha|localtime|date:"d/m/Y H:i" }}</td>
+
+                <td class="text-center">
+                    {% if l.status != 'cancelled' and not l.tiene_pagos_reales %}
+                        <form method="post" action="{% url 'venta_app:anular-venta' l.id %}">
+                            {% csrf_token %}
+                            <button class="btn btn-danger btn-sm"
+                                    onclick="return confirm('¿Seguro que deseas anular esta venta? El stock será restaurado.')">
+                                Anular
+                            </button>
+                        </form>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if l.status == 'cancelled' %}
+                        <span class="badge bg-secondary">ANULADA</span>
+                    {% else %}
+                        <span class="badge bg-success">ACTIVA</span>
+                    {% endif %}
+                </td>
             </tr>
-        </thead>
-        <tbody>
-            {% for l in lista_ventas %}
-                <tr>
-                <th scope="row">{{l.Venta_CliId}} </th>
-                <td>{{l.Venta_Total}}</td>
-                <td>{{l.Venta_Fecha |localtime|date:"d/m/Y H:i"}} </td>
-                </tr>
-            {% endfor %}
-        
-        </tbody>
-    </table>
-   
+        {% empty %}
+            <tr>
+                <td colspan="4" class="text-center text-muted py-3">
+                    No hay ventas registradas
+                </td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
 
 {% endblock %}

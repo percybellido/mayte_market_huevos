@@ -37,10 +37,31 @@ urlpatterns = [
         name='venta-simple',
     ),
     path('pago/registrar/', views.RegistrarPagoView.as_view(), name='registrar-pago'),
-    path('registrar-abono/', views.RegistrarAbonoView.as_view(), name='registrar_abono'),
+    path(
+        'abonos/registrar/',
+        views.RegistrarAbonoView.as_view(),
+        name='registrar-abono'
+    ),
+    path('abonos/registrar/<int:cliente_id>/', views.RegistrarAbonoView.as_view(), name='registrar-abono'),
+
     path('confirmar-venta/', views.ConfirmarVentaView.as_view(), name='confirmar_venta'),
     path("venta/<int:pk>/", views.VentaDetailView.as_view(), name="venta-detalle"),
-    
+    path("ajax/add-peso/", views.AddPesoAjaxView.as_view(), name="ajax-add-peso"),
+    path(
+    "ajax/update-peso/",
+    views.UpdateCantidadAjaxView.as_view(),
+    name="ajax-update-peso"
+    ),
+    path(
+    "ajax/delete-carshop/",
+    views.CarShopDeleteAjaxView.as_view(),
+    name="ajax-delete-carshop"
+    ),
+    path(
+    'ventas/<int:pk>/anular/',
+    views.AnularVentaView.as_view(),
+    name='anular-venta'
+    ),
     path('venta/ganancias/', views.GananciasUltimosDiasView.as_view(), name='ganancias'),
     path("saldo-total/", views.SaldoTotalView.as_view(), name="saldo_total"),
 

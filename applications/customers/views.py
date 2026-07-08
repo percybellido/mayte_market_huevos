@@ -1,7 +1,7 @@
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.core.paginator import Paginator
 from django.views.generic import ListView, TemplateView, DetailView
-
+from django.db.models import Q
 from .models import Cliente
 from applications.sales.models import Pago, HistorialSaldo, VentaDetalle
 
@@ -27,9 +27,10 @@ class HistorialVentasCliente(DetailView):
         context = super().get_context_data(**kwargs)
         # mostrar solo las 20 ventas más recientes
         context['ultimas_ventas'] = (
-            self.object.cliente_venta.all()
-            .order_by('-Venta_Fecha')[:20]
-        )
+        self.object.cliente_venta
+        .filter(status='confirmed')   # 🔥 CLAVE
+        .order_by('-Venta_Fecha')[:8]
+    )
         return context
 
     
@@ -42,22 +43,26 @@ class HistorialClienteView(ListView):
 
     
     def get_queryset(self):
-        return HistorialSaldo.objects.filter(
-            cliente_id=self.kwargs["pk"]
-        ).order_by("fecha")
-
+        return (
+            HistorialSaldo.objects
+            .filter(cliente_id=self.kwargs["pk"])
+            .filter(Q(venta__isnull=True) | Q(venta__status='confirmed'))
+            .select_related("venta", "pago")  # 👈 optimización
+            .order_by("-fecha")[:50]
+        )
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        cliente = Cliente.objects.get(id=self.kwargs["pk"])
+        cliente = get_object_or_404(Cliente, id=self.kwargs["pk"])
         context["cliente"] = cliente
 
         # 🔹 Ganancia total acumulada (todas las ventas del cliente)
         ganancia_total = (
             VentaDetalle.objects
-            .filter(VD_VentasId__Venta_CliId=cliente)
+            .filter(VD_VentasId__Venta_CliId=self.kwargs["pk"])
             .aggregate(
                 total=Sum(
-                    (F('VD_Precio') - F('producto__precio_compra')) * F('VD_Cantidad'),
+                    (F('VD_Precio') - F('VD_precio_compra')) * F('VD_Cantidad'),
                     output_field=FloatField()
                 )
             )['total'] or 0
@@ -81,7 +86,7 @@ class HistorialClienteUtilidad(ListView):
             Venta.objects.filter(Venta_CliId=cliente)
             .annotate(
                 utilidad_total=Sum(
-                    (F('detalles__VD_Precio') - F('detalles__producto__precio_compra')) * F('detalles__VD_Cantidad'),
+                    (F('detalles__VD_Precio') - F('detalles__VD_precio_compra')) * F('detalles__VD_Cantidad'),
                     output_field=FloatField()
                 ),
                 monto_total=Sum(
@@ -89,7 +94,7 @@ class HistorialClienteUtilidad(ListView):
                     output_field=FloatField()
                 )
             )
-            .order_by('-Venta_Fecha')
+            .order_by('-Venta_Fecha')[:20]
         )
 
     def get_context_data(self, **kwargs):

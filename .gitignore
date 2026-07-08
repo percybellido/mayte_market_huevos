@@ -29,3 +29,9 @@ mayte_market/settings/local.py
 # Archivos de sistema
 .DS_Store
 Thumbs.db
+
+#variables de entorno 
+.env
+
+#Archivos multimedia subidos
+media/

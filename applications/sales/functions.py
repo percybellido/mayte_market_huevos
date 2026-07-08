@@ -28,6 +28,28 @@ def generar_nro_factura():
 
     return f"{prefijo}-{nuevo_num:06d}"
 
+def aplicar_saldo_a_favor(cliente, venta):
+    """
+    Aplica el saldo a favor del cliente como pago automático.
+    """
+    saldo = cliente.saldo_pendiente   # puede ser negativo
+
+    if saldo >= 0:
+        return  # no hay saldo a favor
+
+    saldo_a_favor = abs(saldo)
+
+    
+    monto_a_usar = min(saldo_a_favor, venta.Venta_Total)
+
+    PagoVenta.objects.create(
+        venta=venta,
+        monto_pagado=monto_a_usar,
+        descripcion="Aplicación automática de saldo a favor"
+    )
+
+    cliente.actualizar_saldo()
+
 def procesar_venta(self, **params_venta):
 
     # recupera la lista de productos en el carrito
@@ -52,7 +74,7 @@ def procesar_venta(self, **params_venta):
         cantidad_total=0
 
         for producto_car in productos_en_car:
-            subtotal=producto_car.cantidad*producto_car.precio_venta
+            subtotal = producto_car.cantidad * producto_car.precio
             venta_detalle=VentaDetalle(
                 producto=producto_car.producto,
                 venta=producto_car.VD_VentasId,
@@ -72,7 +94,8 @@ def procesar_venta(self, **params_venta):
     
 def registrar_pago(cliente, total_pagado, metodo_pago):
     ventas_pendientes = Venta.objects.filter(
-        Venta_CliId=cliente
+        Venta_CliId=cliente,
+        status='confirmed'
     ).order_by('Venta_Fecha')
 
     with transaction.atomic():
@@ -101,20 +124,29 @@ def registrar_pago(cliente, total_pagado, metodo_pago):
             if restante <= 0:
                 break
 
-def ganancia_total_por_dia(fecha=None):
-    """Devuelve la ganancia total de todas las ventas en la fecha indicada."""
-    if fecha is None:
-        fecha = timezone.now().date()  # Por defecto, usa el día actual
+        cliente.actualizar_saldo()
+        
+        #if restante > 0:
+            # Guardamos el excedente como saldo a favor (saldo negativo)
+            #cliente.saldo -= restante
+            #cliente.save(update_fields=["saldo"])
+        #else:
+            #cliente.actualizar_saldo()
+    
 
-    resultado = VentaDetalle.objects.filter(
-        VD_VentasId__Venta_Fecha__date=fecha
+def ganancia_total_por_dia(fecha):
+
+    utilidad = VentaDetalle.objects.filter(
+        VD_VentasId__Venta_Fecha__date=fecha,
+        VD_VentasId__status='confirmed'
     ).aggregate(
         total=Sum(
             (F('VD_Precio') - F('producto__precio_compra')) * F('VD_Cantidad'),
             output_field=DecimalField(max_digits=12, decimal_places=2)
         )
-    )
-    return resultado['total'] or 0
+    )['total'] or 0
+
+    return utilidad
 
 def ganancias_ultimos_dias(dias=7):
     """Devuelve una lista con la ganancia de los últimos 'dias' días."""

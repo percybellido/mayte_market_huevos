@@ -4,6 +4,11 @@
     {% load static %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        if ('scrollRestoration' in history) {
+            history.scrollRestoration = 'manual';
+        }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap" rel="stylesheet">
@@ -55,8 +60,10 @@
                                     <li><a class="dropdown-item" href="{% url 'venta_app:ganancias' %}">Utilidades</a></li>
                                     <li><a class="dropdown-item" href="{% url 'producto_app:producto-lista' %}">Lista de Productos</a></li>
                                     <li><a class="dropdown-item" href="{% url 'venta_app:venta-index' %}">Vender</a></li>
-                                    <li><a class="dropdown-item" href="{% url 'venta_app:saldo_total' %}">Saldo Total</a></li>
-                                    <li>
+                                    <li><a class="dropdown-item" href="{% url 'venta_app:lista-ventas' %}">
+                                            Gestionar ventas
+                                        </a>
+                                    </li>
                                         {% if cliente_en_sesion %}
                                             <a class="dropdown-item" href="{% url 'cliente_app:historial_cliente' cliente_en_sesion.id %}">
                                                 Ver historial {{ cliente_en_sesion.Cli_Nombre }}
@@ -113,5 +120,24 @@
 
     <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
     <script src="{% static 'js/app.js' %}"></script>
+
+    <script>
+        document.addEventListener("click", function (event) {
+
+            const navbar = document.getElementById("navbarNav");
+            const toggler = document.querySelector(".navbar-toggler");
+
+            // Si el click NO fue dentro del navbar ni en el botón hamburguesa
+            if (!navbar.contains(event.target) && !toggler.contains(event.target)) {
+
+                const bsCollapse = bootstrap.Collapse.getInstance(navbar);
+
+                // Solo si está abierto
+                if (bsCollapse && navbar.classList.contains("show")) {
+                    bsCollapse.hide();
+                }
+            }
+        });
+    </script>
 </body>
 </html>

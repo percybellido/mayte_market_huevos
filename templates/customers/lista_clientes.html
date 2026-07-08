@@ -36,7 +36,7 @@
   </thead>
   <tbody>
     {% for cliente in lista_clientes %}
-      <tr class=" fila{{ cliente.color_alerta }}">
+      <tr class=" fila {{ cliente.color_alerta }}">
         <td>{{ cliente.id }}</td>
         <td>{{ cliente.nombre }}</td>
         <!--<td>{{ cliente.dni }}</td>
@@ -53,22 +53,44 @@
         </td>-->
         <td>{{ cliente.dias_vencidos }} días</td>
         <td>
-          <div class="d-flex flex-wrap gap-2 botones-acciones">
-            <a href="{% url 'cliente_app:historial_cliente' cliente.id %}" class="btn btn-primary btn-sm">
-              Ventas
-            </a>
-            <a href="{% url 'venta_app:registrar_abono' %}" class="btn btn-primary btn-sm">
-              Abonar
-            </a>
+          <button
+            id="btn-acciones-{{ cliente.id }}"
+            type="button"
+            class="btn btn-outline-secondary btn-sm w-100"
+            data-cliente="{{ cliente.id }}"
+            onclick="toggleAcciones(this.dataset.cliente)">
+            Acciones
+          </button>
 
-            <a href="{% url 'cliente_app:historial_saldos' cliente.id %}" class="btn btn-success btn-sm">
-              Pagos/Saldos
-            </a>
-            <a href="{% url 'cliente_app:historial_utilidad' cliente.id %}" class="btn btn-success btn-sm utilidad-btn">
-              Utilidad
-            </a>
-          </div>
-        </td>
+          <!-- Contenedor de acciones -->
+      <div id="acciones-{{ cliente.id }}" class="d-none mt-2">
+
+        <div class="d-grid gap-2">
+          <a href="{% url 'cliente_app:historial_cliente' cliente.id %}"
+            class="btn btn-primary btn-sm">
+            Ventas
+          </a>
+
+          
+          <a href="{% url 'venta_app:registrar-abono' cliente.id %}"
+            class="btn btn-primary btn-sm">
+            Abonar
+          </a>
+
+          <a href="{% url 'cliente_app:historial_saldos' cliente.id %}"
+            class="btn btn-success btn-sm">
+            Pagos / Saldos
+          </a>
+
+          <a href="{% url 'cliente_app:historial_utilidad' cliente.id %}"
+            class="btn btn-success btn-sm">
+            Utilidad
+          </a>
+        </div>
+
+      </div>
+    </td>
+
       </tr>
     {% empty %}
       <tr>
@@ -106,5 +128,31 @@
   </nav>
 </div>
 {% endif %}
+<script>
+  let clienteActivo = null;
+
+  function toggleAcciones(clienteId) {
+    // Si hay un cliente activo distinto, lo cerramos
+    if (clienteActivo && clienteActivo !== clienteId) {
+      const accionesPrevias = document.getElementById(`acciones-${clienteActivo}`);
+      const btnPrevio = document.getElementById(`btn-acciones-${clienteActivo}`);
+
+      if (accionesPrevias) accionesPrevias.classList.add('d-none');
+      if (btnPrevio) btnPrevio.classList.remove('d-none');
+    }
+
+    const accionesActual = document.getElementById(`acciones-${clienteId}`);
+    const btnActual = document.getElementById(`btn-acciones-${clienteId}`);
+
+    if (!accionesActual || !btnActual) return;
+
+    // Mostrar acciones actuales
+    accionesActual.classList.remove('d-none');
+    btnActual.classList.add('d-none');
+
+    // Registrar nuevo activo
+    clienteActivo = clienteId;
+  }
+</script>
 
 {% endblock %}

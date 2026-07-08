@@ -1,17 +1,41 @@
 {% extends 'base.html' %}
-
 {% load static %}
 
 {% block content %}
 
 <div class="container fondo py-3">
 
+  <!-- =========================== -->
+  <!-- ENCABEZADO DEL PRODUCTO     -->
+  <!-- =========================== -->
+  {% if producto_seleccionado %}
+  <div class="alert alert-info text-center mb-3">
+
+      <h5 class="mb-1">
+        <strong>Producto seleccionado:</strong> {{ producto_seleccionado.nombre }}
+      </h5>
+
+      <span class="badge bg-primary fs-6">
+        Precio unitario: S/ {{ precio_fijo|floatformat:2 }}
+      </span>
+
+  </div>
+  {% endif %}
+
   <div class="row g-3 mb-3">
-    <!-- FORMULARIO DE AGREGAR PRODUCTOS -->
-    <form class="col-12 col-md-8" method="POST">
+
+    <!-- =========================== -->
+    <!-- FORMULARIO AGREGAR PESOS    -->
+    <!-- =========================== -->
+    <form class="col-12 
+      col-md-8" 
+      method="POST" 
+      action=""
+      data-producto-seleccionado="{% if producto_seleccionado %}1{% else %}0{% endif %}">
       {% csrf_token %}
       <div class="card shadow-sm p-3">
 
+        <!-- CLIENTE -->
         <div class="mb-3">
           {% if cliente %}
             <p><strong>Cliente:</strong> {{ cliente }}</p>
@@ -24,53 +48,75 @@
         <label class="input-group-text d-flex align-items-center mb-2">COD/CAN:</label>
 
         <div class="row g-2">
+
+          <!-- PRODUCTO (solo si no está seleccionado) -->
           <div class="col-12 col-md-6">
-            {{ form.producto }}
+            {% if not producto_seleccionado %}
+              {{ form.producto }}
+            {% endif %}
           </div>
+
+          <!-- PESO -->
           <div class="col-6 col-md-3">
             {{ form.cantidad }}
           </div>
+
+          <!-- PRECIO UNITARIO (solo al inicio) -->
           <div class="col-6 col-md-3">
-            {{ form.precio_unitario }}
+            {% if not producto_seleccionado %}
+              {{ form.precio_unitario }}
+            {% endif %}
           </div>
+
         </div>
 
-        <button type="submit" class="btn btn-secondary w-100 mt-3">Agregar</button>
+        
+        <button type="submit" id="btn-agregar" class="btn btn-secondary w-100 mt-3">
+          Agregar
+        </button>
       </div>
     </form>
 
-    <!-- BOTÓN ÚLTIMAS VENTAS -->
+    <!-- ÚLTIMAS VENTAS -->
     <div class="col-12 col-md-4">
       <a class="btn btn-outline-secondary w-100 py-2 h-100 d-flex justify-content-center align-items-center"
          href="{% url 'venta_app:lista-ventas' %}">
         <i class="bi bi-clock-history me-2"></i> Últimas Ventas
       </a>
     </div>
+
   </div>
 
-  <!-- LISTA DE PRODUCTOS EN EL CARRITO -->
+
+  <!-- =========================== -->
+  <!-- LISTA DE PESOS REGISTRADOS  -->
+  <!-- =========================== -->
   <div class="row g-3">
 
     <div class="col-12 col-md-8">
-      <h5 class="mb-2">Productos en Venta</h5>
 
-      <div class="table-responsive">
-        <table class="table table-hover align-middle">
-          <thead>
+      <h5 class="mb-2">Pesos registrados</h5>
+
+      <div class="table-responsive" style="max-height: 450px; overflow-y:auto;">
+        <table class="table table-hover align-middle table-sm">
+          <thead class="table-light sticky-top">
             <tr>
-              <th>Nombres</th>
-              <th>Precio (S/)</th>
-              <th>Cantidad</th>
+              <th>Peso</th>
+              <th>Precio</th>
               <th colspan="3" class="text-center">Acciones</th>
             </tr>
           </thead>
+
           <tbody>
+
             {% for product in productos %}
-              <tr>
-                <td>{{ product.producto }}</td>
-                <td>{{ product.precio|floatformat:2 }}</td>
+              <tr data-id="{{ product.id }}">
+
                 <td>{{ product.cantidad|floatformat:2 }}</td>
 
+                <td>{{ product.precio|floatformat:2 }}</td>
+
+                <!-- SUMAR -->
                 <td class="text-center">
                   <form action="{% url 'venta_app:carshop-add' product.id %}" method="POST">
                     {% csrf_token %}
@@ -80,6 +126,7 @@
                   </form>
                 </td>
 
+                <!-- RESTAR -->
                 <td class="text-center">
                   <form action="{% url 'venta_app:carshop-update' product.id %}" method="POST">
                     {% csrf_token %}
@@ -89,35 +136,48 @@
                   </form>
                 </td>
 
+                <!-- ELIMINAR -->
                 <td class="text-center">
-                  <form action="{% url 'venta_app:carshop-delete' product.id %}" method="POST">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger btn-sm">
+                   <button class="btn btn-danger btn-sm btn-delete"
+                            data-id="{{ product.id }}">
                       <i class="bi bi-x"></i>
                     </button>
-                  </form>
                 </td>
+
               </tr>
             {% endfor %}
+
           </tbody>
         </table>
       </div>
 
     </div>
 
-    <!-- RESUMEN Y ACCIONES -->
+
+    <!-- =========================== -->
+    <!-- RESUMEN                     -->
+    <!-- =========================== -->
     <div class="col-12 col-md-4">
 
+      {% if cliente %}
       <div class="alert alert-success text-center">
         <h5>Cliente: {{ cliente }}</h5>
       </div>
+      {% endif %}
+
+      {% if producto_seleccionado %}
+      <div class="alert alert-info text-center">
+        <strong>Producto:</strong> {{ producto_seleccionado.nombre }}<br>
+        <strong>Precio unitario:</strong> S/ {{ precio_fijo|floatformat:2 }}
+      </div>
+      {% endif %}
 
       <div class="alert alert-success text-center">
-        <h5>Total a Cobrar: S/ {{ total_cobrar }}</h5>
+        <h4>Total: S/ {{ total_cobrar }}</h4>
       </div>
 
       <!-- BOTONES -->
-      <a href="{% url 'venta_app:registrar_abono' %}" class="btn btn-secondary w-100 py-2 mb-2">
+      <a href="{% url 'venta_app:registrar-abono' %}" class="btn btn-secondary w-100 py-2 mb-2">
         Registrar Abono
       </a>
 
@@ -127,6 +187,20 @@
           Confirmar Venta
         </button>
       </form>
+
+      
+
+      {% if venta %}
+        {% if venta.status != 'cancelled' and not venta.pagos_aplicados.exists %}
+            <form method="post"
+                  action="{% url 'venta_app:anular-venta' venta.pk %}">
+                {% csrf_token %}
+                <button class="btn btn-danger w-100 py-2 mb-2">
+                    Anular venta
+                </button>
+            </form>
+        {% endif %}
+      {% endif %}
 
       <form action="{% url 'venta_app:carshop-delete_all' %}" method="POST">
         {% csrf_token %}
@@ -147,17 +221,200 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const form = document.querySelector("form");
+    const cantidadInput = document.querySelector("input[name='cantidad']");
+    const tbody = document.querySelector("table tbody");
+    const totalBox = document.querySelector(".alert-success h4");
+
+    const productoSeleccionado = form.dataset.productoSeleccionado === "1";
+
+    /* =========================
+       SUBMIT (AGREGAR / EDITAR)
+       ========================= */
+    form.addEventListener("submit", function (e) {
+       console.log("SUBMIT disparado");
+        if (!productoSeleccionado) return;
+
+        e.preventDefault();
+
+        const cantidad = cantidadInput.value;
+        if (!cantidad || parseFloat(cantidad) <= 0) return;
+
+        const editingId = cantidadInput.dataset.editingId;
+        if (!editingId) {
+            delete cantidadInput.dataset.editingId;
+        }
+
+        const url = editingId
+            ? "{% url 'venta_app:ajax-update-peso' %}"
+            : "{% url 'venta_app:ajax-add-peso' %}";
+
+        const body = editingId
+            ? `id=${editingId}&cantidad=${cantidad}`
+            : `cantidad=${cantidad}`;
+
+        fetch(url, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}",
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body
+        })
+        .then(res => res.json())
+        .then(data => {
+
+            if (!data.ok) {
+                alert(data.error || "Error");
+                return;
+            }
+
+            if (editingId) {
+              const row = tbody.querySelector(`tr[data-id="${editingId}"]`);
+
+              row.querySelector(".peso").innerText = data.cantidad.toFixed(2);
+              row.querySelector(".subtotal").innerText = data.subtotal.toFixed(2);
+
+              row.dataset.weight = data.cantidad;
+          }
+            else {
+                // ➕ Nueva fila
+                const row = document.createElement("tr");
+                row.dataset.id = data.id;
+                row.dataset.weight = data.cantidad;
+
+                row.innerHTML = `
+                  <td class="peso">${data.cantidad.toFixed(2)}</td>
+                  <td class="precio">${data.precio.toFixed(2)}</td>
+                  <td class="subtotal">${data.subtotal.toFixed(2)}</td>
+
+                  <td class="text-center">
+                      <button class="btn btn-warning btn-sm btn-edit"
+                              data-id="${data.id}">
+                          ✎
+                      </button>
+                  </td>
+
+                  <td class="text-center">
+                      <button class="btn btn-danger btn-sm btn-delete"
+                              data-id="${data.id}">
+                          ✕
+                      </button>
+                  </td>
+                `;
+
+                tbody.prepend(row);
+            }
+
+            totalBox.innerText = `Total: S/ ${data.total.toFixed(2)}`;
+
+            cantidadInput.value = "";
+            delete cantidadInput.dataset.editingId;
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+
+                    cantidadInput.focus({ preventScroll: true });
+
+                    // 🟢 Forzar visibilidad en móviles
+                    cantidadInput.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center"
+                    });
+
+                });
+            });
+        });
+    });
+
+    /* =========================
+       CLICK EN EDITAR / ELIMINAR
+       ========================= */
+    tbody.addEventListener("click", function (e) {
+
+    const btnEdit = e.target.closest(".btn-edit");
+    const btnDelete = e.target.closest(".btn-delete");
+
+    if (!btnEdit && !btnDelete) return;
+
+    const row = e.target.closest("tr");
+    if (!row) return;
+
+    const id = row.dataset.id;
+
+    /* ✏️ EDITAR */
+    if (btnEdit) {
+        cantidadInput.value = row.dataset.weight;
+        cantidadInput.dataset.editingId = id;
+
+        // 🔒 evita scroll raro + devuelve foco
+        requestAnimationFrame(() => {
+            cantidadInput.focus({ preventScroll: true });
+            cantidadInput.select();
+        });
+    }
+
+    /* ❌ ELIMINAR */
+    if (btnDelete) {
+
+    fetch("{% url 'venta_app:ajax-delete-carshop' %}", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": "{{ csrf_token }}",
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: `id=${id}`
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        if (!data.ok) return;
+
+        row.remove();
+
+        totalBox.innerText = `Total: S/ ${data.total.toFixed(2)}`;
+
+        if (cantidadInput.dataset.editingId === id) {
+            cantidadInput.dataset.editingId = "";
+            cantidadInput.value = "";
+        }
+
+        cantidadInput.focus({ preventScroll: true });
+    });
+}
+
+});
+});
+</script>
+
+
+<script>
   $(document).ready(function() {
+
       $('.select-cliente').select2({
           placeholder: "Buscar cliente...",
-          allowClear: true
+          allowClear: true,
+          width: '100%'
       });
 
       $('.select-producto').select2({
           placeholder: "Buscar producto...",
-          allowClear: true
+          allowClear: true,
+          width: '100%'
       });
+
   });
+
+  
+  document.addEventListener("DOMContentLoaded", function() {
+      const cantidadField = document.querySelector("input[name='cantidad']");
+      if (cantidadField) {
+          cantidadField.focus();
+      }
+  });
+
 </script>
 
 {% endblock %}

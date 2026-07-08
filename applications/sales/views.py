@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404
-from django.http import HttpResponseRedirect, HttpResponse
+from django.http import HttpResponseRedirect, HttpResponse, JsonResponse
 from django.urls import reverse_lazy, reverse
 from django.views.generic import ListView, View, DeleteView, DetailView, TemplateView
 from django.views.generic.edit import FormView
@@ -12,11 +12,13 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect
 from django.utils.timezone import now
 
-from .models import Venta, VentaDetalle, CarShop, PagoVenta, Pago
+from .models import Venta, VentaDetalle, CarShop, PagoVenta, Pago, HistorialSaldo
 from .forms import VentaForm, PagoForm, AbonoForm
 from .functions import procesar_venta, ganancia_total_por_dia, ganancias_ultimos_dias
+from decimal import Decimal
 
-from .functions import registrar_pago
+from .functions import registrar_pago, aplicar_saldo_a_favor
+
 
 from django.db import transaction
 
@@ -25,64 +27,167 @@ class AddCarView(VentasPermisoMixin, FormView):
     form_class = VentaForm
     success_url = '.'
 
+    # ============================================================
+    # 0. Reset automático SOLO cuando empieza un nuevo proceso
+    # ============================================================
+    def dispatch(self, request, *args, **kwargs):
+
+        # Si el carrito está vacío → nuevo proceso → resetear solo estos valores
+        carrito_vacio = not CarShop.objects.filter(user=request.user).exists()
+
+        if carrito_vacio:
+            request.session.pop('cliente_id', None)
+            request.session.pop('venta_producto_id', None)
+            request.session.pop('venta_precio', None)
+
+        return super().dispatch(request, *args, **kwargs)
+
+    # ============================================================
+    # 1. Ajustar formulario según lo que ya se eligió
+    # ============================================================
     def get_form(self, form_class=None):
         form = super().get_form(form_class)
-        # Si ya hay cliente en sesión, quitamos el campo del formulario
+
+        # Si ya hay cliente seleccionado → ocultarlo
         if 'cliente_id' in self.request.session:
             form.fields.pop('cliente', None)
+
+        # Si ya hay producto y precio fijo → ocultarlos
+        if 'venta_producto_id' in self.request.session:
+            form.fields.pop('producto', None)
+            form.fields.pop('precio_unitario', None)
+
         return form
 
+    # ============================================================
+    # 2. Contexto
+    # ============================================================
     def get_context_data(self, **kwargs):
-       
         context = super().get_context_data(**kwargs)
-        productos = CarShop.objects.all()
-        context["productos"] = productos
-        context["total_cobrar"] = CarShop.objects.total_cobrar()
-        context["ganancia"] = CarShop.objects.ganancia()
-        # Si hay cliente en sesión, mostrarlo
-        cliente_id = self.request.session.get('cliente_id')
-        context["cliente"] = Cliente.objects.get(id=cliente_id) if cliente_id else None
+
+        carrito = CarShop.objects.filter(user=self.request.user).select_related("producto")
+
+        context["productos"] = carrito
+
+        context["total_cobrar"] = carrito.aggregate(
+            total=Sum(F("cantidad") * F("precio"))
+        )["total"] or 0
+
+        context["ganancia"] = carrito.aggregate(
+            gan=Sum((F("precio") - F("producto__precio_compra")) * F("cantidad"))
+        )["gan"] or 0
+
+        ultima_venta=None
+
+        ultima_venta_id = self.request.session.get('ultima_venta_id')
+
+        if ultima_venta_id:
+            context['ultima_venta'] = Venta.objects.filter(
+                id=ultima_venta_id,
+                status='confirmed'
+            ).first()
+
+
+        # Producto seleccionado una sola vez
+        prod_id = self.request.session.get("venta_producto_id")
+        if prod_id:
+            context["producto_seleccionado"] = Producto.objects.filter(id=prod_id).first()
+            context["precio_fijo"] = self.request.session.get("venta_precio")
+
+        # Cliente seleccionado
+        cliente_id = self.request.session.get("cliente_id")
+        context["cliente"] = Cliente.objects.filter(id=cliente_id).first()
+
+        
+
+        
+
         return context
-    
+
+    # ============================================================
+    # 3. Registrar cada peso como línea independiente
+    # ============================================================
     def form_valid(self, form):
-        if 'cliente_id' not in self.request.session:
-            # Obtener cliente desde el formulario y guardarlo en la sesión
-            cliente = form.cleaned_data['cliente']
-            self.request.session['cliente_id'] = cliente.id
-        else:
-            # Si ya está en sesión, recuperarlo de la base de datos
-            cliente_id = self.request.session['cliente_id']
+        with transaction.atomic():
+
+            # Cliente (solo una vez)
+            cliente_id = self.request.session.get("cliente_id")
+            if not cliente_id:
+                cliente = form.cleaned_data["cliente"]
+                self.request.session["cliente_id"] = cliente.id
+            else:
+                cliente = Cliente.objects.get(id=cliente_id)
+
+            # Producto y precio (solo una vez)
+            if "venta_producto_id" not in self.request.session:
+                producto = form.cleaned_data["producto"]
+                precio_unitario = form.cleaned_data["precio_unitario"]
+                self.request.session["venta_producto_id"] = producto.id
+                self.request.session["venta_precio"] = float(precio_unitario)
+            else:
+                producto = Producto.objects.get(
+                    id=self.request.session["venta_producto_id"]
+                )
+                precio_unitario = self.request.session["venta_precio"]
+
+            # Cada peso es una fila
+            cantidad = form.cleaned_data["cantidad"]
+
+            CarShop.objects.create(
+                user=self.request.user,
+                producto=producto,
+                cliente=cliente,
+                cantidad=cantidad,
+                precio=precio_unitario,
+            )
+
+            messages.success(
+                self.request,
+                f"{producto.nombre} — peso {cantidad} añadido."
+            )
+
+        return super().form_valid(form)
+    
+class AddPesoAjaxView(VentasPermisoMixin, View):
+    def post(self, request):
+        try:
+            cantidad = Decimal(request.POST.get("cantidad"))
+            producto_id = request.session.get("venta_producto_id")
+            cliente_id = request.session.get("cliente_id")
+            precio = Decimal(request.session.get("venta_precio"))
+
+            if not all([cantidad, producto_id, cliente_id, precio]):
+                return JsonResponse({"ok": False, "error": "Datos incompletos"})
+
+            producto = Producto.objects.get(id=producto_id)
             cliente = Cliente.objects.get(id=cliente_id)
-        producto = form.cleaned_data['producto']
-        cantidad = form.cleaned_data['cantidad']
-        precio_unitario = form.cleaned_data.get('precio_unitario') or producto.precio_venta
 
-        # Guardar cliente en sesión si no existe
-        if 'cliente_id' not in self.request.session:
-            self.request.session['cliente_id'] = cliente.id
+            item = CarShop.objects.create(
+                user=request.user,
+                producto=producto,
+                cliente=cliente,
+                cantidad=cantidad,
+                precio=precio
+            )
 
-        # Obtener cliente desde la sesión
-        cliente_id = self.request.session['cliente_id']
-        cliente = Cliente.objects.get(id=cliente_id)
+            # 🔹 SUBTOTAL (clave para que no reviente el JS)
+            subtotal = cantidad * precio
 
-        obj, created = CarShop.objects.get_or_create(
-            producto=producto,
-            cliente=cliente,
-            defaults={
-                'cantidad': cantidad,
-                'precio' : precio_unitario,
-            }
-        )
-        #
-        if not created:
-            obj.cantidad = obj.cantidad + cantidad
-            obj.precio = precio_unitario
-            obj.save()
+            total = CarShop.objects.filter(user=request.user).aggregate(
+                total=Sum(F("cantidad") * F("precio"))
+            )["total"] or Decimal("0.00")
 
-        obj.precio = precio_unitario
-        obj.save()
+            return JsonResponse({
+                "ok": True,
+                "id": item.id,
+                "cantidad": float(item.cantidad),
+                "precio": float(item.precio),
+                "subtotal": float(subtotal),   # 👈 CLAVE
+                "total": float(total),
+            })
 
-        return super(AddCarView, self).form_valid(form)
+        except Exception as e:
+            return JsonResponse({"ok": False, "error": str(e)})
     
 class CarShopAddView(VentasPermisoMixin, View):
     """ aumenta en 1 la cantidad en un carshop """
@@ -120,7 +225,7 @@ class CarShopDeleteAll(VentasPermisoMixin, View):
     
     def post(self, request, *args, **kwargs):
         #
-        CarShop.objects.all().delete()
+        CarShop.objects.filter(user=request.user).delete()
         #
 
         self.request.session.pop('cliente_id', None)
@@ -130,7 +235,26 @@ class CarShopDeleteAll(VentasPermisoMixin, View):
                 'venta_app:venta-index'
             )
         )
+class CarShopDeleteAjaxView(VentasPermisoMixin, View):
+    def post(self, request):
+        item_id = request.POST.get("id")
 
+        CarShop.objects.filter(
+            id=item_id,
+            user=request.user
+        ).delete()
+
+        total = CarShop.objects.filter(
+            user=request.user
+        ).aggregate(
+            total=Sum(F("cantidad") * F("precio"))
+        )["total"] or Decimal("0.00")
+
+        return JsonResponse({
+            "ok": True,
+            "total": float(total)
+        })
+    
 class ProcesoVentaSimpleView(VentasPermisoMixin, View):
     """ Procesa una venta simple """
 
@@ -169,25 +293,51 @@ class RegistrarPagoView(FormView):
     success_url = reverse_lazy('venta_app:lista-ventas')
 
     def form_valid(self, form):
+        cliente=form.cleaned_data['cliente']
         registrar_pago(
-            cliente=form.cleaned_data['cliente'],
+            cliente=cliente,
             total_pagado=form.cleaned_data['total_pagado'],
             metodo_pago=form.cleaned_data['metodo_pago']
         )
+
+       
         return super().form_valid(form)
+    
+    
     
 class RegistrarAbonoView(FormView):
     template_name = 'sales/registrar_abono.html'
     form_class = AbonoForm
     success_url = reverse_lazy('venta_app:venta-index')
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        cliente_id = self.kwargs.get('cliente_id')
+
+        if cliente_id:
+            context['cliente_seleccionado'] = Cliente.objects.get(id=cliente_id)
+
+        return context
+    
+    def get_initial(self):
+        initial = super().get_initial()
+        cliente_id = self.kwargs.get('cliente_id')
+
+        if cliente_id:
+            initial['cliente'] = Cliente.objects.get(id=cliente_id)
+
+        return initial
+    
     def form_valid(self, form):
-        cliente = form.cleaned_data['cliente']
+        cliente_id = self.kwargs.get('cliente_id')
+        cliente = (
+            Cliente.objects.get(id=cliente_id)
+            if cliente_id
+            else form.cleaned_data['cliente']
+        )
+
         monto = form.cleaned_data['monto']
         metodo_pago = form.cleaned_data['metodo_pago']
-        print("Cliente recibido:", form.cleaned_data.get("cliente"))
-        print("Método pago recibido:", form.cleaned_data.get("metodo_pago"))
-        print("Monto:", form.cleaned_data.get("monto"))
 
         with transaction.atomic():
             pago = Pago.objects.create(
@@ -196,25 +346,54 @@ class RegistrarAbonoView(FormView):
                 metodo_pago=metodo_pago
             )
 
-            ventas_pendientes = Venta.objects.filter(Venta_CliId=cliente)
+            monto_restante = Decimal(monto)
 
-            monto_restante = monto
+            ventas_pendientes = (
+                Venta.objects.activas()
+                .filter(Venta_CliId=cliente)
+                .order_by("Venta_Fecha")
+            )
+
+            
             for venta in ventas_pendientes:
-                total_venta = venta.Venta_Total
-                pagado = venta.pagos_aplicados.aggregate(total=Sum('monto_pagado'))['total'] or 0
-                saldo = total_venta - pagado
-                if saldo <= 0:
+
+                total_pagado_venta = (
+                    venta.pagos_aplicados.aggregate(
+                        total=Sum('monto_pagado')
+                    )['total'] or Decimal("0.00")
+                )
+
+                saldo_venta = venta.Venta_Total - total_pagado_venta
+
+                # SOLO si realmente debe
+                if saldo_venta <= 0:
                     continue
-                abono = min(saldo, monto_restante)
-                if abono > 0:
-                    PagoVenta.objects.create(pago=pago, venta=venta, monto_pagado=abono)
-                    monto_restante -= abono
+
+                abono = min(saldo_venta, monto_restante)
+
+                PagoVenta.objects.create(
+                    pago=pago,
+                    venta=venta,
+                    monto_pagado=abono
+                )
+
+                monto_restante -= abono
+
                 if monto_restante <= 0:
                     break
+
             cliente.actualizar_saldo()
-            
+
+            HistorialSaldo.objects.create(
+                cliente=cliente,
+                saldo=cliente.saldo,
+                pago=pago
+            )
+            pago.saldo_despues = cliente.saldo
+            pago.save(update_fields=["saldo_despues"])
+
         return super().form_valid(form)
-    
+        
 class ConfirmarVentaView(LoginRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         cliente_id = request.session.get('cliente_id')
@@ -222,7 +401,7 @@ class ConfirmarVentaView(LoginRequiredMixin, View):
             return redirect('venta_app:venta-index')  # Redirigir si no hay cliente
 
         cliente = Cliente.objects.get(id=cliente_id)
-        carrito = CarShop.objects.filter(cliente=cliente)
+        carrito = CarShop.objects.filter(user=request.user)
 
         if not carrito.exists():
             return redirect('venta_app:venta-index')  # Redirigir si el carrito está vacío
@@ -238,7 +417,16 @@ class ConfirmarVentaView(LoginRequiredMixin, View):
                 Venta_CliId=cliente,
                 Venta_cantidad=cantidad_total,
                 Venta_Total=total_venta,
+                status='confirmed',
                 user=request.user  # usuario cajero
+            )
+            #aplicar_saldo_a_favor(cliente, venta)
+            cliente.actualizar_saldo()
+
+            HistorialSaldo.objects.create(
+                cliente=cliente,
+                saldo=cliente.saldo,
+                venta=venta
             )
 
         # Crear los detalles
@@ -247,7 +435,8 @@ class ConfirmarVentaView(LoginRequiredMixin, View):
                 VD_VentasId=venta,
                 producto=item.producto,
                 VD_Cantidad=item.cantidad,
-                VD_Precio=item.precio
+                VD_Precio=item.precio,
+                VD_precio_compra=item.producto.precio_compra
             )
 
         # Limpiar el carrito
@@ -255,6 +444,8 @@ class ConfirmarVentaView(LoginRequiredMixin, View):
 
         # Limpiar la sesión del cliente
         del request.session['cliente_id']
+
+        request.session['ultima_venta_id'] = venta.id
 
         return redirect('venta_app:venta-detalle', pk=venta.pk)  # Redirigir a página principal
     
@@ -269,7 +460,12 @@ class VentaDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         venta = self.get_object()
-        context["detalles"] = venta.detalles.all()  # relacionados por related_name en VentaDetalle
+        detalles = venta.detalles.select_related("producto")
+        context["detalles"] = detalles
+        context["total_peso"] = (
+            detalles.aggregate(total=Sum("VD_Cantidad"))["total"] or 0
+        )
+
         return context
 
 class GananciasUltimosDiasView(TemplateView):
@@ -291,3 +487,88 @@ class SaldoTotalView(TemplateView):
 
 
     
+class UpdateCantidadAjaxView(VentasPermisoMixin, View):
+    def post(self, request):
+
+        carshop_id = request.POST.get("id")
+        cantidad = request.POST.get("cantidad")
+
+        if not carshop_id or not cantidad:
+            return JsonResponse({"ok": False, "error": "Datos incompletos"})
+
+        try:
+            cantidad = Decimal(cantidad)
+        except:
+            return JsonResponse({"ok": False, "error": "Cantidad inválida"})
+
+        item = CarShop.objects.get(
+            id=carshop_id,
+            user=request.user
+        )
+
+        item.cantidad = cantidad
+        item.save(update_fields=["cantidad"])
+
+        total = CarShop.objects.filter(
+            user=request.user
+        ).aggregate(
+            total=Sum(F("cantidad") * F("precio"))
+        )["total"] or Decimal("0.00")
+
+        return JsonResponse({
+            "ok": True,
+            "id": item.id,
+            "cantidad": float(item.cantidad),
+            "precio": float(item.precio),
+            "subtotal": float(item.cantidad * item.precio),
+            "total": float(total)
+        })
+    
+from django.shortcuts import get_object_or_404, redirect
+from django.views import View
+from django.contrib import messages
+from django.db import transaction
+from django.db.models import Sum
+from decimal import Decimal
+
+class AnularVentaView(VentasPermisoMixin, View):
+
+    @transaction.atomic
+    def post(self, request, pk):
+
+        # 1️⃣ Obtener venta
+        venta = get_object_or_404(Venta, pk=pk)
+
+        # 2️⃣ Si ya está anulada
+        if venta.status == 'cancelled':
+            messages.warning(request, "La venta ya está anulada.")
+            return redirect('venta_app:lista-ventas')
+
+        # 3️⃣ Verificar pagos reales
+        total_pagado = (
+            venta.pagos_aplicados.aggregate(
+                total=Sum('monto_pagado')
+            )['total'] or Decimal("0.00")
+        )
+
+        if total_pagado > 0:
+            messages.error(
+                request,
+                "No se puede anular una venta que tiene pagos registrados."
+            )
+            return redirect('venta_app:lista-ventas')
+
+        # 4️⃣ Restituir stock
+        for detalle in venta.detalles.select_related('producto'):
+            producto = detalle.producto
+            producto.cantidad += detalle.VD_Cantidad
+            producto.save(update_fields=["cantidad"])
+
+        # 5️⃣ Marcar como anulada
+        venta.status = 'cancelled'
+        venta.save(update_fields=["status"])
+
+        messages.success(request, "Venta anulada correctamente.")
+
+        # 6️⃣ Redirección neutra
+        return redirect('venta_app:lista-ventas')

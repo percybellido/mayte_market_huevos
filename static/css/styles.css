@@ -318,21 +318,20 @@ a .navbar-brand{
   background-color: rgb(63, 43, 8); /* marrón más oscuro al pasar */
 }
 
-.filaamarillo {
+.table-dark .filaamarillo td {
   background-color: hsl(45, 100%, 51%) !important; /* amarillo Bootstrap */
   color: #000 !important;
 }
 
-.filanaranja {
+.table-dark .filanaranja td {
   background-color: #fd7e14 !important; /* naranja Bootstrap */
   color: #fff !important;
 }
 
-.filarojo {
+.table-dark .filarojo td {
   background-color: #d31023 !important; /* rojo Bootstrap */
   color: #fff !important;
 }
-
 
 .custom-categories .nav-link {
     color: #555;                 /* gris neutro para la fuente */
@@ -467,4 +466,50 @@ a .navbar-brand{
         text-align: center;
         margin:1 1 1 1;
     }
+}
+
+/* MOBILE FIRST */
+.pesos-grid {
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr); /* 👈 SIEMPRE 5 */
+    gap: 6px;
+    margin-top: 1rem;
+  }
+
+  .peso-item {
+    border: 1px solid #000;
+    padding: 4px 2px;
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+/* TABLET */
+@media (min-width: 768px) {
+  .peso-item {
+    font-size: 0.9rem;
+    padding: 8px 4px;
+  }
+}
+
+/* DESKTOP */
+@media (min-width: 992px) {
+  .pesos-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+
+@media print {
+  body {
+    font-size: 11px;
+  }
+
+  .peso-item {
+    font-size: 0.7rem;
+    padding: 3px;
+  }
+
+  .btn {
+    display: none;
+  }
 }
