@@ -101,6 +101,7 @@
         <table class="table table-hover align-middle table-sm">
           <thead class="table-light sticky-top">
             <tr>
+              <th style="width:38px" class="text-center">#</th>
               <th>Peso</th>
               <th>Precio</th>
               <th colspan="3" class="text-center">Acciones</th>
@@ -111,10 +112,17 @@
 
             {% for product in productos %}
               <tr data-id="{{ product.id }}">
+                <td class="text-center text-muted numero">
+                    {{ forloop.counter }}
+                </td>
+                <td class="peso">
+                  {{ product.cantidad|floatformat:2 }}
 
-                <td>{{ product.cantidad|floatformat:2 }}</td>
+                </td>
 
-                <td>{{ product.precio|floatformat:2 }}</td>
+                <td class="precio">
+                  {{ product.precio|floatformat:2 }}
+                </td>
 
                 <!-- SUMAR -->
                 <td class="text-center">
@@ -230,6 +238,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const productoSeleccionado = form.dataset.productoSeleccionado === "1";
 
+    function renumerarFilas() {
+
+        tbody.querySelectorAll("tr").forEach((fila, indice) => {
+
+            const numero = fila.querySelector(".numero");
+
+            if (numero) {
+                numero.textContent = indice + 1;
+            }
+
+        });
+
+    }
     /* =========================
        SUBMIT (AGREGAR / EDITAR)
        ========================= */
@@ -286,6 +307,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 row.dataset.weight = data.cantidad;
 
                 row.innerHTML = `
+                  <td class="text-center text-muted numero"></td>
                   <td class="peso">${data.cantidad.toFixed(2)}</td>
                   <td class="precio">${data.precio.toFixed(2)}</td>
                   <td class="subtotal">${data.subtotal.toFixed(2)}</td>
@@ -306,6 +328,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 `;
 
                 tbody.prepend(row);
+                renumerarFilas();
             }
 
             totalBox.innerText = `Total: S/ ${data.total.toFixed(2)}`;
@@ -373,6 +396,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!data.ok) return;
 
         row.remove();
+        renumerarFilas();
 
         totalBox.innerText = `Total: S/ ${data.total.toFixed(2)}`;
 
