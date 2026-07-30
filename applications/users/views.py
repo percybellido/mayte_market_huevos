@@ -48,6 +48,12 @@ def csrf_failure(request, reason=""):
     <b>POST csrfmiddlewaretoken:</b><br>
     {request.POST.get("csrfmiddlewaretoken")}<br><br>
 
+    <b>Authenticated:</b><br>
+    {request.user.is_authenticated}<br><br>
+
+    <b>Session data:</b><br>
+    {dict(request.session.items())}<br><br>
+    
     <b>User:</b><br>
     {request.user}
     """, status=403)
