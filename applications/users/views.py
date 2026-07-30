@@ -28,29 +28,28 @@ from .forms import (
 from .models import User
 # 
 
+
+
 def csrf_failure(request, reason=""):
     return HttpResponse(f"""
     <h2>CSRF Failure</h2>
 
-    <b>Reason:</b><br>
-    {reason}
-    <hr>
+    <b>Reason:</b> {reason}<br><br>
 
-    <b>Method:</b> {request.method}<br>
-    <b>Path:</b> {request.path}<br>
-    <b>Host:</b> {request.get_host()}<br>
-    <b>Origin:</b> {request.headers.get("Origin")}<br>
-    <b>Referer:</b> {request.headers.get("Referer")}<br>
+    <b>Session Key:</b><br>
+    {request.session.session_key}<br><br>
 
-    <hr>
+    <b>Cookie sessionid:</b><br>
+    {request.COOKIES.get("sessionid")}<br><br>
 
     <b>Cookie csrftoken:</b><br>
-    {request.COOKIES.get("csrftoken")}
-
-    <br><br>
+    {request.COOKIES.get("csrftoken")}<br><br>
 
     <b>POST csrfmiddlewaretoken:</b><br>
-    {request.POST.get("csrfmiddlewaretoken")}
+    {request.POST.get("csrfmiddlewaretoken")}<br><br>
+
+    <b>User:</b><br>
+    {request.user}
     """, status=403)
 
 class UserRegisterView(FormView):
