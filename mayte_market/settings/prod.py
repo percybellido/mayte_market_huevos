@@ -12,7 +12,7 @@ CSRF_TRUSTED_ORIGINS = [
     for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
     if origin.strip()]
 
-
+CSRF_FAILURE_VIEW = "applications.users.views.csrf_failure"
 
 # BASE DE DATOS
 

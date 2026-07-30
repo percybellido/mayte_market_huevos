@@ -3,7 +3,7 @@ from django.core.mail import send_mail
 from django.urls import reverse_lazy, reverse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, HttpResponse
 from django.utils.http import url_has_allowed_host_and_scheme
 
 from django.views.generic import (
@@ -28,6 +28,30 @@ from .forms import (
 from .models import User
 # 
 
+def csrf_failure(request, reason=""):
+    return HttpResponse(f"""
+    <h2>CSRF Failure</h2>
+
+    <b>Reason:</b><br>
+    {reason}
+    <hr>
+
+    <b>Method:</b> {request.method}<br>
+    <b>Path:</b> {request.path}<br>
+    <b>Host:</b> {request.get_host()}<br>
+    <b>Origin:</b> {request.headers.get("Origin")}<br>
+    <b>Referer:</b> {request.headers.get("Referer")}<br>
+
+    <hr>
+
+    <b>Cookie csrftoken:</b><br>
+    {request.COOKIES.get("csrftoken")}
+
+    <br><br>
+
+    <b>POST csrfmiddlewaretoken:</b><br>
+    {request.POST.get("csrfmiddlewaretoken")}
+    """, status=403)
 
 class UserRegisterView(FormView):
     template_name = 'users/register.html'
