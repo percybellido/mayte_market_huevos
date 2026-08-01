@@ -5,6 +5,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponseRedirect, HttpResponse
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 
 from django.views.generic import (
     View,
@@ -53,7 +55,7 @@ def csrf_failure(request, reason=""):
 
     <b>Session data:</b><br>
     {dict(request.session.items())}<br><br>
-    
+
     <b>User:</b><br>
     {request.user}
     """, status=403)
@@ -77,7 +79,7 @@ class UserRegisterView(FormView):
         return super(UserRegisterView, self).form_valid(form)
 
 
-
+@method_decorator(never_cache, name="dispatch")
 class LoginUser(FormView):
     template_name = 'users/login.html'
     form_class = LoginForm
@@ -105,7 +107,7 @@ class LoginUser(FormView):
 
         return super(LoginUser, self).form_valid(form)
 
-
+@method_decorator(never_cache, name="dispatch")
 class LogoutView(View):
 
     def get(self, request, *args, **kargs):
