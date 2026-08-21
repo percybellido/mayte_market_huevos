@@ -3,7 +3,11 @@
 {% block content %}
 
 <style>
-/* CONTENEDOR GENERAL PARA TICKET */
+
+/* =====================================
+   CONTENEDOR GENERAL PARA TICKET
+===================================== */
+
 .ticket {
   width: 80mm;
   margin: 0 auto;
@@ -11,138 +15,382 @@
   font-size: 11px;
 }
 
-/* GRID ADAPTATIVO */
+
 /* =====================================
-   GRID
+   GRID GENERAL
 ===================================== */
 
-.pesos-grid{
-
-  display:grid;
-
-  grid-template-columns:repeat(10, 1fr);
-
-  column-gap:2px;
-
-  row-gap:0;
+.pesos-grid {
+  display: grid;
+  width: 100%;
+  column-gap: 2px;
+  row-gap: 0;
 }
+
 
 /* =====================================
    ITEM
 ===================================== */
 
-.peso-item{
-
-  text-align:center;
-
-  font-size:8.5px;
-
-  padding:2px 0;
-
-  white-space:nowrap;
-
-  font-family:monospace;
-
-  font-variant-numeric:tabular-nums;
+.peso-item {
+  text-align: center;
+  white-space: nowrap;
+  font-family: monospace;
+  font-variant-numeric: tabular-nums;
 }
+
 
 /* =====================================
-   SOMBREADO FILA SI / FILA NO
+   1 - 4 VALORES
+   1 COLUMNA
 ===================================== */
 
-/* filas 1,3,5... */
-.peso-item:nth-child(20n + 1),
-.peso-item:nth-child(20n + 2),
-.peso-item:nth-child(20n + 3),
-.peso-item:nth-child(20n + 4),
-.peso-item:nth-child(20n + 5),
-.peso-item:nth-child(20n + 6),
-.peso-item:nth-child(20n + 7),
-.peso-item:nth-child(20n + 8),
-.peso-item:nth-child(20n + 9),
-.peso-item:nth-child(20n + 10){
-
-  background:#f1f1f1;
+.pesos-1-col {
+  grid-template-columns: repeat(1, 1fr);
 }
+
+.pesos-1-col .peso-item {
+  font-size: 16px;
+  padding: 3px 0;
+}
+
 
 /* =====================================
-   IMPRESION
+   5 - 12 VALORES
+   2 COLUMNAS
 ===================================== */
 
-@media print{
+.pesos-2-col {
+  grid-template-columns: repeat(2, 1fr);
+}
 
-  .pesos-grid{
+.pesos-2-col .peso-item {
+  font-size: 14px;
+  padding: 2px 0;
+}
 
-    column-gap:1px;
+
+/* =====================================
+   13 - 30 VALORES
+   3 COLUMNAS
+===================================== */
+
+.pesos-3-col {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.pesos-3-col .peso-item {
+  font-size: 12px;
+  padding: 2px 0;
+}
+
+
+/* =====================================
+   31 - 60 VALORES
+   5 COLUMNAS
+===================================== */
+
+.pesos-5-col {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.pesos-5-col .peso-item {
+  font-size: 10.5px;
+  padding: 2px 0;
+}
+
+
+/* =====================================
+   61 - 99 VALORES
+   8 COLUMNAS
+===================================== */
+
+.pesos-8-col {
+  grid-template-columns: repeat(8, 1fr);
+}
+
+.pesos-8-col .peso-item {
+  font-size: 9px;
+  padding: 1.5px 0;
+}
+
+
+/* =====================================
+   100+ VALORES
+   10 COLUMNAS
+===================================== */
+
+.pesos-10-col {
+  grid-template-columns: repeat(10, 1fr);
+}
+
+.pesos-10-col .peso-item {
+  font-size: 8.5px;
+  padding: 2px 0;
+}
+
+
+/* =====================================
+   SOMBREADO - 1 COLUMNA
+===================================== */
+
+.pesos-1-col .peso-item:nth-child(2n + 1) {
+  background: #f1f1f1;
+}
+
+
+/* =====================================
+   SOMBREADO - 2 COLUMNAS
+===================================== */
+
+.pesos-2-col .peso-item:nth-child(4n + 1),
+.pesos-2-col .peso-item:nth-child(4n + 2) {
+  background: #f1f1f1;
+}
+
+
+/* =====================================
+   SOMBREADO - 3 COLUMNAS
+===================================== */
+
+.pesos-3-col .peso-item:nth-child(6n + 1),
+.pesos-3-col .peso-item:nth-child(6n + 2),
+.pesos-3-col .peso-item:nth-child(6n + 3) {
+  background: #f1f1f1;
+}
+
+
+/* =====================================
+   SOMBREADO - 5 COLUMNAS
+===================================== */
+
+.pesos-5-col .peso-item:nth-child(10n + 1),
+.pesos-5-col .peso-item:nth-child(10n + 2),
+.pesos-5-col .peso-item:nth-child(10n + 3),
+.pesos-5-col .peso-item:nth-child(10n + 4),
+.pesos-5-col .peso-item:nth-child(10n + 5) {
+  background: #f1f1f1;
+}
+
+
+/* =====================================
+   SOMBREADO - 8 COLUMNAS
+===================================== */
+
+.pesos-8-col .peso-item:nth-child(16n + 1),
+.pesos-8-col .peso-item:nth-child(16n + 2),
+.pesos-8-col .peso-item:nth-child(16n + 3),
+.pesos-8-col .peso-item:nth-child(16n + 4),
+.pesos-8-col .peso-item:nth-child(16n + 5),
+.pesos-8-col .peso-item:nth-child(16n + 6),
+.pesos-8-col .peso-item:nth-child(16n + 7),
+.pesos-8-col .peso-item:nth-child(16n + 8) {
+  background: #f1f1f1;
+}
+
+
+/* =====================================
+   SOMBREADO - 10 COLUMNAS
+===================================== */
+
+.pesos-10-col .peso-item:nth-child(20n + 1),
+.pesos-10-col .peso-item:nth-child(20n + 2),
+.pesos-10-col .peso-item:nth-child(20n + 3),
+.pesos-10-col .peso-item:nth-child(20n + 4),
+.pesos-10-col .peso-item:nth-child(20n + 5),
+.pesos-10-col .peso-item:nth-child(20n + 6),
+.pesos-10-col .peso-item:nth-child(20n + 7),
+.pesos-10-col .peso-item:nth-child(20n + 8),
+.pesos-10-col .peso-item:nth-child(20n + 9),
+.pesos-10-col .peso-item:nth-child(20n + 10) {
+  background: #f1f1f1;
+}
+
+
+/* =====================================
+   IMPRESIÓN
+===================================== */
+
+@media print {
+
+  .pesos-grid {
+    column-gap: 1px;
   }
 
-  .peso-item{
+  .peso-item {
+    background: none !important;
+  }
 
-    background:none !important;
+  /* 1 - 4 */
+  .pesos-1-col .peso-item {
+    font-size: 15px;
+    padding: 2px 0;
+  }
 
-    font-size:8px;
+  /* 5 - 12 */
+  .pesos-2-col .peso-item {
+    font-size: 13px;
+    padding: 1px 0;
+  }
 
-    padding:1px 0;
+  /* 13 - 30 */
+  .pesos-3-col .peso-item {
+    font-size: 11px;
+    padding: 1px 0;
+  }
+
+  /* 31 - 60 */
+  .pesos-5-col .peso-item {
+    font-size: 10px;
+    padding: 1px 0;
+  }
+
+  /* 61 - 99 */
+  .pesos-8-col .peso-item {
+    font-size: 8.5px;
+    padding: 1px 0;
+  }
+
+  /* 100+ */
+  .pesos-10-col .peso-item {
+    font-size: 8px;
+    padding: 1px 0;
   }
 
 }
+
 </style>
+
 
 <div class="ticket">
 
-  <!-- Encabezado -->
+  <!-- =====================================
+       ENCABEZADO
+  ====================================== -->
+
   <div class="text-center mb-2">
+
     <strong>COMPROBANTE DE VENTA</strong><br>
 
     Cliente: {{ venta.Venta_CliId }}<br>
+
     Fecha: {{ venta.Venta_Fecha|localtime|date:"d/m/Y H:i" }}
 
     <hr>
 
     {{ venta.detalles.first.producto.nombre }}<br>
+
     Precio: S/ {{ venta.detalles.first.VD_Precio }}
+
   </div>
 
-  <!-- Pesos -->
-  <div class="text-center fw-bold mb-1">Pesos (kg)</div>
 
-  <div class="pesos-grid">
+  <!-- =====================================
+       PESOS
+  ====================================== -->
+
+  <div class="text-center fw-bold mb-1">
+    Pesos (kg)
+  </div>
+
+
+  {% with cantidad=venta.detalles.count %}
+
+  <div class="pesos-grid
+
+    {% if cantidad <= 4 %}
+      pesos-1-col
+
+    {% elif cantidad <= 12 %}
+      pesos-2-col
+
+    {% elif cantidad <= 30 %}
+      pesos-3-col
+
+    {% elif cantidad <= 60 %}
+      pesos-5-col
+
+    {% elif cantidad <= 99 %}
+      pesos-8-col
+
+    {% else %}
+      pesos-10-col
+
+    {% endif %}
+
+  ">
+
     {% for detalle in venta.detalles.all %}
+
       <div class="peso-item">
         {{ detalle.VD_Cantidad }}
       </div>
+
     {% endfor %}
+
   </div>
 
+  {% endwith %}
+
+
   <hr>
 
-  <!-- Totales -->
+
+  <!-- =====================================
+       TOTALES
+  ====================================== -->
+
   <div>
+
     Paquetes: {{ venta.detalles.count }}<br>
+
     Peso total: {{ total_peso|floatformat:2 }} kg<br>
-    <strong>Total: S/ {{ venta.total|floatformat:2 }}</strong>
-</div>
+
+    <strong>
+      Total: S/ {{ venta.total|floatformat:2 }}
+    </strong>
+
+  </div>
+
 
   <hr>
 
-  <!-- Mensaje -->
+
+  <!-- =====================================
+       MENSAJE
+  ====================================== -->
+
   <div class="text-center">
     ¡Gracias por su compra!
   </div>
 
 </div>
 
+
+<!-- =====================================
+     ANULAR VENTA
+====================================== -->
+
 {% if venta.status != 'cancelled' and not venta.tiene_pagos_reales %}
+
 <div class="container-fluid mt-3 mb-3">
-  <form method="post"
-        action="{% url 'venta_app:anular-venta' venta.pk %}"
-        onsubmit="return confirm('¿Seguro que deseas anular esta venta?');">
+
+  <form
+    method="post"
+    action="{% url 'venta_app:anular-venta' venta.pk %}"
+    onsubmit="return confirm('¿Seguro que deseas anular esta venta?');"
+  >
+
     {% csrf_token %}
+
     <button class="btn btn-danger btn-sm w-100">
       Anular venta
     </button>
+
   </form>
+
 </div>
+
 {% endif %}
 
 {% endblock %}
