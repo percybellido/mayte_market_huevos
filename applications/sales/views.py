@@ -308,7 +308,7 @@ class RegistrarPagoView(FormView):
 class RegistrarAbonoView(FormView):
     template_name = 'sales/registrar_abono.html'
     form_class = AbonoForm
-    success_url = reverse_lazy('venta_app:venta-index')
+    success_url = reverse_lazy('cliente_app:lista-clientes')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
