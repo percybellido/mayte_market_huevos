@@ -122,6 +122,10 @@ class AddCarView(VentasPermisoMixin, FormView):
             if "venta_producto_id" not in self.request.session:
                 producto = form.cleaned_data["producto"]
                 precio_unitario = form.cleaned_data["precio_unitario"]
+
+                if precio_unitario is None:
+                    precio_unitario = producto.precio_venta
+
                 self.request.session["venta_producto_id"] = producto.id
                 self.request.session["venta_precio"] = float(precio_unitario)
             else:
